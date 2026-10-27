@@ -20,7 +20,7 @@ http.createServer((request, response) => {
 
   let filename;
   if (pathname === "/" || /^\/game\/\d+\/?$/.test(pathname)) {
-    filename = path.join(root, pathname === "/" ? "Lobby.html" : "MatchThree.html");
+    filename = path.join(root, pathname === "/" ? "Lobby.html" : "index.html");
   } else {
     filename = path.resolve(root, `.${decodeURIComponent(pathname)}`);
     if (!filename.startsWith(root + path.sep)) {

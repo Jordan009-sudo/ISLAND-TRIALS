@@ -8,6 +8,8 @@
 6. Push this folder to a Git repository and create a Render Blueprint from `render.yaml`. Render uses `npm install` to build and `npm start` to run the site. The root opens `Lobby.html`; room links use `/game/1000`; `/healthz` is the service health check.
 7. Create an account to host a room. Press `Join game` to join the oldest waiting room, or to create the next room if none is open. Hosts can wait for another player and choose `Start with players`, or choose `Fill with bots` to start with a full cast. Anyone can join an open room without a password.
 
+If the Render service is a **Static Site**, open its **Settings → Redirects/Rewrites** and add a rule with source `/game/*`, destination `/index.html`, and action **Rewrite**. Render does not use this repository's Netlify `_redirects` file. If you deploy as the Node Web Service defined by `render.yaml`, `server.js` handles `/game/<id>` directly instead.
+
 For local development, run `npm start`. The server binds to Render's `PORT` environment variable and listens on `0.0.0.0`.
 
 Season saves are stored in `public.season_saves`; row-level security limits access to the signed-in user's own row. The browser also keeps a local backup for offline play. Never put a Supabase secret or service-role key in `supabase-config.js`.

@@ -72,6 +72,7 @@ let jurors = [];
 let events = [];
 let day = 1;
 let phase = "challenge";
+let dayStartedAt = Date.now();
 let merged = false;
 let playerImmune = false;
 let tribeSupport = {};
@@ -151,6 +152,7 @@ function saveGame(immediate = false) {
     jurors,
     events,
     day,
+    dayStartedAt,
     phase,
     merged,
     playerImmune,
@@ -186,6 +188,7 @@ function broadcastRoomState(event = "season-state") {
     jurors,
     events,
     day,
+    dayStartedAt,
     phase,
     merged,
     playerImmune,
@@ -212,6 +215,7 @@ function applyRoomState(state) {
   jurors = state.jurors || [];
   events = state.events || [];
   day = state.day;
+  dayStartedAt = state.dayStartedAt || Date.now();
   if (isNewDay) {
     board = createPlayableBoard();
     selected = null;
@@ -237,10 +241,10 @@ function applyRoomState(state) {
   locked = ended || localPlayerEliminated;
   messageElement.textContent = state.message || "Season state updated.";
   document.querySelector("#player-name").value = getPlayer()?.name || "Guest";
-  tribalPanelElement.hidden = phase !== "tribal" || !pendingCouncil?.voterIds.includes(getPlayer()?.id);
+  tribalPanelElement.hidden = !pendingCouncil?.voterIds.includes(getPlayer()?.id);
   juryPanelElement.hidden = phase !== "jury" || !jurors.includes(getPlayer()?.id);
   finalePanelElement.hidden = phase !== "finale";
-  if (phase === "tribal" && pendingCouncil?.voterIds.includes(getPlayer()?.id)) {
+  if (pendingCouncil?.voterIds.includes(getPlayer()?.id)) {
     document.querySelector("#tribal-prompt").textContent = "Your vote is private. Choose a castaway.";
     renderVoteOptions(pendingCouncil.candidateIds);
   }
@@ -448,7 +452,9 @@ function renderSeason() {
   seasonDayElement.textContent = `DAY ${day} · ${alive.length} LEFT`;
   document.querySelector("#player-count").textContent = `${alive.length} LEFT`;
   phaseLabelElement.textContent = phase === "ready"
-    ? "CHALLENGE READY"
+    ? pendingCouncil ? "TRIBAL VOTE + CHALLENGE" : "CHALLENGE READY"
+    : phase === "challenge" && pendingCouncil
+      ? "TRIBAL VOTE + CHALLENGE"
     : phase === "day"
       ? "DAY IN PROGRESS"
     : phase === "waiting"
@@ -669,6 +675,7 @@ function startDay(broadcastState = true) {
   moves = 0;
   secondsLeft = CHALLENGE_SECONDS;
   daySecondsLeft = DAY_SECONDS;
+  dayStartedAt = Date.now();
   locked = true;
   ended = true;
   selected = null;
@@ -716,7 +723,7 @@ function startDay(broadcastState = true) {
   juryPanelElement.hidden = true;
   finalePanelElement.hidden = true;
   board = createPlayableBoard();
-  messageElement.textContent = "Start the challenge when you are ready. You have one minute.";
+  messageElement.textContent = "The five-minute day has started. Start your one-minute challenge when ready.";
   render();
   if (isMultiplayer && broadcastState && isRoomHost()) {
     broadcastRoomState("season-state");
@@ -729,8 +736,7 @@ function startChallenge(remote = false, startedAt = Date.now()) {
   if (isMultiplayer && !remote && !isRoomHost()) return;
   phase = "challenge";
   const elapsed = Math.floor((Date.now() - startedAt) / 1000);
-  secondsLeft = Math.max(0, CHALLENGE_SECONDS - elapsed);
-  daySecondsLeft = Math.max(0, DAY_SECONDS - elapsed);
+  secondsLeft = Math.max(0, Math.min(CHALLENGE_SECONDS, daySecondsLeft) - elapsed);
   locked = localPlayerEliminated;
   ended = false;
   messageElement.textContent = merged
@@ -780,9 +786,6 @@ function pickVoteResult(ballots) {
 }
 
 function openTribalCouncil(voterIds, candidateIds, prompt) {
-  phase = "tribal";
-  locked = true;
-  ended = true;
   pendingCouncil = { voterIds, candidateIds };
   tribalPanelElement.hidden = false;
   document.querySelector("#tribal-prompt").textContent = prompt;
@@ -792,7 +795,6 @@ function openTribalCouncil(voterIds, candidateIds, prompt) {
     const localCanVote = voterIds.includes(getPlayer()?.id);
     tribalPanelElement.hidden = !localCanVote;
     if (localCanVote) renderVoteOptions(candidateIds);
-    else messageElement.textContent = "Tribal Council is in progress. Waiting for the voters.";
     render();
     if (isRoomHost()) {
       broadcastRoomState();
@@ -831,7 +833,7 @@ function resolveNpcCouncil(voterIds, candidateIds) {
 }
 
 function resolvePlayerCouncilVote(playerVote) {
-  if (!pendingCouncil || phase !== "tribal") return;
+  if (!pendingCouncil || !["ready", "challenge", "day", "tribal"].includes(phase)) return;
   if (isMultiplayer) {
     const voterId = getPlayer()?.id;
     if (!pendingCouncil.voterIds.includes(voterId) || !pendingCouncil.candidateIds.includes(playerVote) || roomVotes[voterId]) return;
@@ -844,8 +846,7 @@ function resolvePlayerCouncilVote(playerVote) {
     return;
   }
   const ballots = pendingCouncil.voterIds
-    .filter((id) => id !== "player")
-    .map((id) => botVote(id, pendingCouncil.candidateIds))
+    .map((id) => id === "player" ? playerVote : botVote(id, pendingCouncil.candidateIds))
     .filter(Boolean);
   if (pendingCouncil.voterIds.includes("player") && pendingCouncil.candidateIds.includes(playerVote)) ballots.push(playerVote);
   const result = pickVoteResult(ballots);
@@ -855,7 +856,7 @@ function resolvePlayerCouncilVote(playerVote) {
 }
 
 function resolveRoomCouncilIfReady(force = false) {
-  if (!isRoomHost() || phase !== "tribal" || !pendingCouncil || roomCouncilResolving) return;
+  if (!isRoomHost() || !["ready", "challenge", "day", "tribal"].includes(phase) || !pendingCouncil || roomCouncilResolving) return;
   const humanVoters = pendingCouncil.voterIds.filter((id) => isHuman(getContestant(id)));
   if (!force && humanVoters.some((id) => !roomVotes[id])) return;
   roomCouncilResolving = true;
@@ -908,8 +909,9 @@ function applyElimination(bootedId, tally) {
     getAlive().forEach((contestant) => { contestant.tribeId = "merged"; });
     addEvent("The tribes merge at the final 8. Individual immunity begins.");
   }
-  day++;
-  startDay();
+  roomCouncilResolving = false;
+  render();
+  if (isMultiplayer && isRoomHost()) broadcastRoomState();
 }
 
 function finishChallengeWindow() {
@@ -924,13 +926,24 @@ function finishChallengeWindow() {
   locked = true;
   ended = true;
   secondsLeft = 0;
-  messageElement.textContent = `Challenge complete. Tribal Council begins when the day ends in ${formatTime(daySecondsLeft)}.`;
+  messageElement.textContent = pendingCouncil
+    ? `Challenge complete. Cast your tribe's vote before the day ends in ${formatTime(daySecondsLeft)}.`
+    : `Challenge complete. The day continues for ${formatTime(daySecondsLeft)}.`;
   render();
   if (isMultiplayer && isRoomHost()) broadcastRoomState();
 }
 
+function beginDayWithCouncil(voterIds, candidateIds, prompt) {
+  pendingCouncil = { voterIds, candidateIds };
+  roomVotes = {};
+  day++;
+  startDay(false);
+  openTribalCouncil(voterIds, candidateIds, prompt);
+  if (isMultiplayer && isRoomHost()) broadcastRoomState();
+}
+
 function resolveDay() {
-  if (phase !== "day" && phase !== "challenge") return;
+  if (phase !== "ready" && phase !== "day" && phase !== "challenge") return;
   if (isMultiplayer && !isRoomHost()) {
     if (phase === "challenge") finishChallengeWindow();
     phase = "waiting";
@@ -941,6 +954,17 @@ function resolveDay() {
     messageElement.textContent = "Your day is complete. Waiting for the host to call Tribal Council.";
     render();
     return;
+  }
+  if (pendingCouncil) {
+    if (isMultiplayer) resolveRoomCouncilIfReady(true);
+    else {
+      const ballots = pendingCouncil.voterIds
+        .map((id) => roomVotes[id] || botVote(id, pendingCouncil.candidateIds))
+        .filter(Boolean);
+      const result = pickVoteResult(ballots);
+      applyElimination(result.bootedId, result.tally);
+    }
+    if (["jury", "finale", "spectating"].includes(phase)) return;
   }
   locked = true;
   ended = true;
@@ -972,7 +996,7 @@ function resolveDay() {
     }
     const voters = getAlive().map((contestant) => contestant.id);
     const candidates = voters.filter((id) => id !== botImmunityWinner.id);
-    openTribalCouncil(voters, candidates, "The merge vote is yours. Select one castaway to vote out.");
+    beginDayWithCouncil(voters, candidates, "The merge vote is yours. Select one castaway to vote out.");
     return;
   }
 
@@ -996,7 +1020,7 @@ function resolveDay() {
   messageElement.textContent = losingTribeId === playerTribe
     ? `${losingTribe.name} lost. Choose your vote at Tribal Council.`
     : `${losingTribe.name} lost. Their council will decide who goes home.`;
-  openTribalCouncil(
+  beginDayWithCouncil(
     losingMembers.map((contestant) => contestant.id),
     losingMembers.map((contestant) => contestant.id).filter((id) => isMultiplayer || id !== "player"),
     losingTribeId === playerTribe ? "Your tribe lost immunity. Who should be voted out?" : `${losingTribe.name} lost immunity.`,
@@ -1166,12 +1190,13 @@ function restoreGame(savedOverride = null) {
     ? CHALLENGE_SECONDS
     : Math.max(0, saved.secondsLeft - (phase === "challenge" ? awaySeconds : 0));
   daySecondsLeft = saved.version === SAVE_VERSION && Number.isFinite(saved.daySecondsLeft)
-    ? Math.max(0, saved.daySecondsLeft - (["challenge", "day"].includes(phase) ? awaySeconds : 0))
+    ? Math.max(0, saved.daySecondsLeft - (["ready", "challenge", "day"].includes(phase) ? awaySeconds : 0))
     : DAY_SECONDS;
   contestants = saved.contestants;
   jurors = saved.jurors || [];
   events = saved.events || [];
   day = saved.day || 1;
+  dayStartedAt = saved.dayStartedAt || Date.now();
   merged = Boolean(saved.merged);
   playerImmune = Boolean(saved.playerImmune);
   tribeSupport = saved.tribeSupport || {};
@@ -1186,10 +1211,10 @@ function restoreGame(savedOverride = null) {
 
   ended = phase !== "challenge";
   locked = ended || findMatches(board).size > 0;
-  tribalPanelElement.hidden = phase !== "tribal";
+  tribalPanelElement.hidden = !pendingCouncil?.voterIds.includes(getPlayer()?.id);
   juryPanelElement.hidden = phase !== "jury";
   finalePanelElement.hidden = phase !== "finale";
-  if (phase === "tribal" && pendingCouncil) {
+  if (pendingCouncil?.voterIds.includes(getPlayer()?.id)) {
     document.querySelector("#tribal-prompt").textContent = "Your tribe lost immunity. Who should be voted out?";
     renderVoteOptions(pendingCouncil.candidateIds);
   }
@@ -1418,7 +1443,7 @@ else if (soloRequested) {
 }
 initializeAccounts();
 setInterval(() => {
-  if (accountLoading || (phase !== "challenge" && phase !== "day")) return;
+  if (accountLoading || !["ready", "challenge", "day"].includes(phase)) return;
   daySecondsLeft = Math.max(0, daySecondsLeft - 1);
   if (phase === "challenge") secondsLeft = Math.max(0, secondsLeft - 1);
   if (phase === "challenge" && secondsLeft === 0) finishChallengeWindow();

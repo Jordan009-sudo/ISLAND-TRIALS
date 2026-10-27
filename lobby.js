@@ -22,7 +22,7 @@ let inviteRoom = new URLSearchParams(location.search).get("room") || location.pa
 if (inviteRoom) sessionStorage.removeItem("island-trials-pending-room");
 
 function playerName(account) {
-  return account.user_metadata?.display_name || account.email?.split("@")[0] || "Player";
+  return account.user_metadata?.display_name || account.user_metadata?.username || account.email?.split("@")[0] || "Player";
 }
 
 function showAccountState() {
@@ -30,10 +30,8 @@ function showAccountState() {
   document.querySelector("#lobby-auth").hidden = signedIn;
   accountPanel.hidden = !signedIn;
   lobbyHome.hidden = Boolean(channel);
-  document.querySelector("#guest-name").required = !signedIn;
-  document.querySelector("#create-room").disabled = !signedIn;
-  document.querySelector("#start-solo").disabled = !signedIn;
   document.querySelector("#lobby-player-name").textContent = playerName(user || {});
+  document.querySelector("#lobby-username").value = signedIn ? playerName(user) : "";
 }
 
 function showMessage(text) {
@@ -50,7 +48,7 @@ function getPlayerId() {
 }
 
 function getDisplayName() {
-  return user ? playerName(user) : document.querySelector("#guest-name").value.trim().slice(0, 16) || "Island guest";
+  return user ? playerName(user) : `Guest-${getPlayerId().slice(0, 4).toUpperCase()}`;
 }
 
 function getRoomPlayers() {
@@ -101,13 +99,14 @@ function renderRoster() {
     rosterElement.append(item);
   });
   const isHost = user?.id === hostId;
-  document.querySelector("#add-bot").hidden = !isHost;
-  document.querySelector("#start-game").hidden = !isHost;
-  document.querySelector("#start-game").disabled = players.length < 2 || total > 14 || roomStarted;
+  document.querySelector("#start-with-players").hidden = !isHost;
+  document.querySelector("#fill-with-bots").hidden = !isHost;
+  document.querySelector("#start-with-players").disabled = players.length < 2 || total > 14 || roomStarted;
+  document.querySelector("#fill-with-bots").disabled = total >= 14 || roomStarted;
   document.querySelector("#leave-room").hidden = isHost;
   if (roomStarted) showMessage("This room has already started.");
   else if (players.length < 2) showMessage("Waiting for at least one more player to join.");
-  else showMessage(isHost ? "Two or more players are here. Add bots or start the season." : "You’re in. Waiting for the host to start the season.");
+  else showMessage(isHost ? "Wait for players, start with the people here, or fill the seats with bots." : "You’re in. Waiting for the host to start the season.");
 }
 
 async function enterRoom(code, create = false) {
@@ -130,7 +129,6 @@ async function enterRoom(code, create = false) {
   roomStarted = false;
   roomPanel.hidden = false;
   lobbyHome.hidden = true;
-  document.querySelector("#room-code-display").textContent = roomCode;
   showMessage("Connecting to room…");
 
   channel = client.channel(`island-room:${roomCode}`, {
@@ -220,17 +218,17 @@ async function leaveRoom(showHome = true) {
   }
 }
 
-function addBot() {
-  if (user?.id !== hostId || bots.length + humans.length >= 14) return;
-  const takenNames = new Set([...humans.map((human) => human.name), ...bots.map((bot) => bot.name)]);
-  const name = BOT_NAMES.find((candidate) => !takenNames.has(candidate)) || `Island Bot ${bots.length + 1}`;
-  bots.push({ id: `bot-${crypto.randomUUID()}`, name, isBot: true });
-  renderRoster();
-  broadcastRoomState();
-}
-
-async function beginRoomGame() {
-  if (user?.id !== hostId || humans.length < 2 || humans.length + bots.length > 14) return;
+async function beginRoomGame(fillBots = false) {
+  if (user?.id !== hostId || humans.length < 1 || (!fillBots && humans.length < 2) || humans.length + bots.length > 14) return;
+  if (fillBots) {
+    const takenNames = new Set([...humans.map((human) => human.name), ...bots.map((bot) => bot.name)]);
+    while (humans.length + bots.length < 14) {
+      const name = BOT_NAMES.find((candidate) => !takenNames.has(candidate)) || `Island Bot ${bots.length + 1}`;
+      bots.push({ id: `bot-${crypto.randomUUID()}`, name, isBot: true });
+      takenNames.add(name);
+    }
+    renderRoster();
+  }
   const allPlayers = [
     ...humans.map((player) => ({ ...player, isBot: false })),
     ...bots.map((bot) => ({ ...bot, isBot: true })),
@@ -261,8 +259,6 @@ async function initialize() {
   if (!window.supabase?.createClient || !config?.url || !config?.key || config.url.includes("YOUR_PROJECT_REF") || config.key.includes("YOUR_SUPABASE")) {
     form.hidden = true;
     lobbyHome.hidden = false;
-    document.querySelector("#create-room").disabled = true;
-    document.querySelector("#start-solo").disabled = true;
     document.querySelector("#join-room-form button[type=submit]").disabled = true;
     authMessage.textContent = "Configure Supabase in supabase-config.js before creating an online room.";
     return;
@@ -279,51 +275,87 @@ async function initialize() {
   });
   document.querySelector("#lobby-signup").addEventListener("click", async () => {
     if (!form.reportValidity()) return;
+    const username = document.querySelector("#lobby-signup-name").value.trim();
+    if (username.length < 2 || username.length > 16) {
+      authMessage.textContent = "Choose a username between 2 and 16 characters.";
+      return;
+    }
     authMessage.textContent = "Creating account…";
     const { error } = await client.auth.signUp({
       email: document.querySelector("#lobby-email").value.trim(),
       password: document.querySelector("#lobby-password").value,
+      options: { data: { display_name: username } },
     });
     authMessage.textContent = error ? error.message : "Account created. Confirm your email, then sign in here.";
   });
+  document.querySelector("#save-username").addEventListener("click", async () => {
+    const username = document.querySelector("#lobby-username").value.trim();
+    if (username.length < 2 || username.length > 16) {
+      document.querySelector("#lobby-auth-message").textContent = "Choose a username between 2 and 16 characters.";
+      return;
+    }
+    document.querySelector("#lobby-auth-message").textContent = "Saving username…";
+    const { data, error } = await client.auth.updateUser({ data: { display_name: username } });
+    if (error) {
+      document.querySelector("#lobby-auth-message").textContent = error.message;
+      return;
+    }
+    user = data.user;
+    showAccountState();
+    if (channel) await channel.track({ player_id: getPlayerId(), name: playerName(user), is_guest: false });
+    document.querySelector("#lobby-auth-message").textContent = "Username saved.";
+  });
   document.querySelector("#lobby-signout").addEventListener("click", async () => client.auth.signOut());
-  document.querySelector("#create-room").addEventListener("click", async () => {
+  async function createRoom() {
     if (!user) return;
-    showMessage("Creating room…");
+    homeMessage.textContent = "Creating room…";
     const { data, error } = await client.from("game_rooms").insert({ host_id: user.id }).select("id").single();
     if (error) {
       homeMessage.textContent = `Room creation failed: ${error.message}`;
       return;
     }
     await enterRoom(String(data.id), true);
-  });
+  }
+  async function joinNextGame() {
+    homeMessage.textContent = "Finding an open room…";
+    const { data, error } = await client.from("game_rooms")
+      .select("id")
+      .eq("status", "waiting")
+      .order("id", { ascending: true })
+      .limit(1);
+    if (error) {
+      homeMessage.textContent = `Could not find an open game: ${error.message}`;
+      return;
+    }
+    if (data?.length) {
+      await enterRoom(String(data[0].id));
+      return;
+    }
+    if (!user) {
+      homeMessage.textContent = "No game is open. Sign in to start the next one.";
+      return;
+    }
+    await createRoom();
+  }
   document.querySelector("#join-room-form").addEventListener("submit", (event) => {
     event.preventDefault();
-    const code = document.querySelector("#join-room-code").value.trim();
-    if (!/^\d+$/.test(code)) return;
-    enterRoom(code);
+    joinNextGame();
   });
-  document.querySelector("#start-solo").addEventListener("click", () => {
-    if (user) {
-      sessionStorage.removeItem("island-trials-room");
-      location.href = "MatchThree.html?solo=1";
-    }
-  });
-  document.querySelector("#add-bot").addEventListener("click", addBot);
-  document.querySelector("#start-game").addEventListener("click", beginRoomGame);
+  document.querySelector("#start-with-players").addEventListener("click", () => beginRoomGame(false));
+  document.querySelector("#fill-with-bots").addEventListener("click", () => beginRoomGame(true));
   document.querySelector("#leave-room").addEventListener("click", () => leaveRoom());
   document.querySelector("#copy-room-link").addEventListener("click", async () => {
     const url = new URL(`/game/${roomCode}`, location.origin);
     await navigator.clipboard.writeText(url.href);
-    showMessage("Invite link copied. Share it with another signed-in player.");
+    showMessage("Invite link copied. Anyone with the link can join.");
   });
   client.auth.onAuthStateChange((event, session) => {
     setTimeout(async () => {
       user = session?.user || null;
       showAccountState();
+      if (user && channel) await channel.track({ player_id: getPlayerId(), name: playerName(user), is_guest: false });
       if (!user && channel) await leaveRoom();
       if (inviteRoom && !channel) {
-        document.querySelector("#join-room-code").value = inviteRoom;
         await enterRoom(inviteRoom);
         inviteRoom = "";
       }
@@ -334,7 +366,6 @@ async function initialize() {
   user = data.session?.user || null;
   showAccountState();
   if (inviteRoom) {
-    document.querySelector("#join-room-code").value = inviteRoom;
     await enterRoom(inviteRoom);
     inviteRoom = "";
   }

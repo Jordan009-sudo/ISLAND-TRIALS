@@ -23,11 +23,12 @@
           <p class="eyebrow">THE ISLAND IS BIG ENOUGH</p>
           <h1>Play it<br><span>together.</span></h1>
         </div>
-        <p class="lobby-intro">Create a room, invite other players with its code, then fill any open castaway seats with bots.</p>
+        <p class="lobby-intro">Join the next open game, or sign in to host and wait for other players.</p>
       </section>
 
       <section id="lobby-auth" class="account-strip" aria-label="Sign in to play">
         <form id="lobby-auth-form" class="account-form">
+          <label>Username <input id="lobby-signup-name" type="text" minlength="2" maxlength="16" autocomplete="nickname" placeholder="Island name"></label>
           <label>Email <input id="lobby-email" type="email" autocomplete="username" required></label>
           <label>Password <input id="lobby-password" type="password" autocomplete="current-password" minlength="8" required></label>
           <button class="quiet-button" type="submit">Sign in</button>
@@ -37,32 +38,19 @@
       </section>
 
       <section id="lobby-account" class="settings-strip lobby-account" hidden>
+        <label>Username <input id="lobby-username" type="text" minlength="2" maxlength="16" autocomplete="nickname" required></label>
         <span>Signed in as <strong id="lobby-player-name"></strong></span>
+        <button id="save-username" class="quiet-button" type="button">Save username</button>
         <button id="lobby-signout" class="quiet-button" type="button">Sign out</button>
       </section>
 
       <section id="lobby-home" class="lobby-grid" hidden>
-        <div class="lobby-panel">
-          <p class="eyebrow">HOST A SEASON</p>
-          <h2>Start a new game</h2>
-          <p class="lobby-copy">Create a public game and share its number. At least two signed-in players are needed to start.</p>
-          <button id="create-room" class="reset-button" type="button">Create room</button>
-        </div>
         <form id="join-room-form" class="lobby-panel">
-          <p class="eyebrow">JOIN YOUR CREW</p>
-          <h2>Join a game</h2>
-          <label class="room-code-label" for="guest-name">YOUR NAME</label>
-          <input id="guest-name" class="room-code-input" type="text" maxlength="16" autocomplete="nickname" placeholder="Island guest" required>
-          <label class="room-code-label" for="join-room-code">GAME NUMBER</label>
-          <input id="join-room-code" class="room-code-input" type="text" inputmode="numeric" pattern="[0-9]+" maxlength="12" autocomplete="off" required>
-          <button class="quiet-button" type="submit">Join game</button>
+          <p class="eyebrow">FIND YOUR CREW</p>
+          <h2>Join game</h2>
+          <p class="lobby-copy">Join the next open room, or start one if you’re signed in.</p>
+          <button class="reset-button" type="submit">Join game</button>
         </form>
-        <div class="lobby-panel">
-          <p class="eyebrow">PLAY ON YOUR OWN</p>
-          <h2>Solo season</h2>
-          <p class="lobby-copy">Start a personal season with bots. Sign in to use your account save.</p>
-          <button id="start-solo" class="quiet-button" type="button">Start solo season</button>
-        </div>
         <p id="lobby-home-message" class="account-message lobby-home-message" aria-live="polite"></p>
       </section>
 
@@ -70,7 +58,7 @@
         <header class="room-heading">
           <div>
             <p class="eyebrow">WAITING LOBBY</p>
-            <h2>Room <strong id="room-code-display"></strong></h2>
+            <h2>Waiting room</h2>
           </div>
           <button id="copy-room-link" class="quiet-button" type="button">Copy invite link</button>
         </header>
@@ -81,8 +69,8 @@
           </div>
           <div class="room-actions">
             <p id="room-message" class="sidebar-copy" aria-live="polite">Waiting for another player to join.</p>
-            <button id="add-bot" class="quiet-button" type="button">Add bot</button>
-            <button id="start-game" class="reset-button" type="button" disabled>Start game</button>
+            <button id="start-with-players" class="reset-button" type="button" disabled>Start with players</button>
+            <button id="fill-with-bots" class="quiet-button" type="button">Fill with bots</button>
             <button id="leave-room" class="quiet-button" type="button">Leave room</button>
           </div>
         </div>

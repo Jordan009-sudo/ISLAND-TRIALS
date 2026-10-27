@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#f6f8ef">
+        <base href="/">
+        <title>Island Trials | Survivor</title>
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Lilita+One&display=swap" rel="stylesheet">
+        <link rel="stylesheet" href="style.css">
+    </head>
+    <body>
+        <main class="game-shell survivor-shell">
+            <header class="topline">
+                <a class="brand" href="#" aria-label="Island Trials home"><span class="brand-mark">✳</span> ISLAND TRIALS</a>
+                <span class="round-tag" id="season-day">DAY 1 / 12</span>
+                <span class="save-status" id="room-code-badge" hidden></span>
+                <span id="save-status" class="save-status" aria-live="polite">AUTOSAVE ON</span>
+            </header>
+
+            <section class="season-heading">
+                <div>
+                    <p class="eyebrow" id="phase-label">TRIBE IMMUNITY</p>
+                    <h1>Outlast.<br><span>Outmatch.</span></h1>
+                </div>
+                <div class="season-clock"><span>DAY ENDS IN</span><strong id="day-time-left">5:00</strong></div>
+            </section>
+
+            <section class="settings-strip" aria-label="Season settings">
+                <label>Player <input id="player-name" type="text" maxlength="16" value="You"></label>
+                <span class="settings-note">Challenge time <strong>1 minute</strong></span>
+                <label>Points per fruit
+                    <select id="points-per-fruit"><option value="5">5</option><option value="10" selected>10</option><option value="20">20</option></select>
+                </label>
+                <button id="save-now" class="quiet-button" type="button">Save now</button>
+                <button id="new-season" class="quiet-button" type="button">New season</button>
+            </section>
+
+            <section class="account-strip" aria-label="Player account">
+                <form id="account-form" class="account-form">
+                    <label>Email <input id="account-email" type="email" autocomplete="username" required></label>
+                    <label>Password <input id="account-password" type="password" autocomplete="current-password" minlength="8" required></label>
+                    <button id="sign-in" class="quiet-button" type="submit">Sign in</button>
+                    <button id="sign-up" class="quiet-button" type="button">Create account</button>
+                </form>
+                <div id="account-session" class="account-session" hidden>
+                    <span>Signed in as <strong id="account-email-label"></strong></span>
+                    <button id="sign-out" class="quiet-button" type="button">Sign out</button>
+                </div>
+                <p id="account-message" class="account-message" aria-live="polite"></p>
+            </section>
+
+            <section id="season-view" class="survivor-layout" aria-label="Survivor season">
+                <div class="play-column">
+                    <div class="tribe-scoreboard" id="tribe-scoreboard">
+                        <div class="tribe-score tribe-score--you"><span id="your-tribe-name">YOUR TRIBE</span><strong id="your-tribe-score">0</strong></div>
+                        <span class="versus">VS</span>
+                        <div class="tribe-score tribe-score--other"><span id="other-tribe-name">OTHER TRIBE</span><strong id="other-tribe-score">0</strong></div>
+                    </div>
+                    <div class="challenge-heading">
+                        <div><p class="eyebrow">TODAY'S IMMUNITY CHALLENGE</p><h2>Fruit Match</h2></div>
+                        <div class="challenge-stats"><span>PLAY TIME<strong id="time-left">1:00</strong></span><span>POINTS<strong id="score">0</strong></span><span>SWAPS<strong id="moves">0</strong></span></div>
+                    </div>
+                    <p class="intro-copy">Swap neighboring fruit. Every match adds points to your tribe's challenge total.</p>
+                    <div id="game-board" class="game-board" role="grid" aria-label="Match three challenge board"></div>
+                    <div class="challenge-footer"><p id="game-message" class="game-message" aria-live="polite">Start the challenge when you are ready. You have one minute.</p><button id="end-day" class="reset-button" type="button">Start challenge</button></div>
+                </div>
+
+                <aside class="season-sidebar">
+                    <section class="sidebar-section">
+                        <div class="section-heading"><h2>Castaways</h2><span id="player-count">14 LEFT</span></div>
+                        <div id="tribe-roster" class="tribe-roster"></div>
+                    </section>
+                    <section id="tribal-panel" class="sidebar-section tribal-panel" hidden>
+                        <div class="section-heading"><h2>Tribal Council</h2><span>CAST YOUR VOTE</span></div>
+                        <p id="tribal-prompt" class="sidebar-copy">Choose one player to vote out.</p>
+                        <div id="vote-options" class="vote-options"></div>
+                    </section>
+                    <section id="jury-panel" class="sidebar-section jury-panel" hidden>
+                        <div class="section-heading"><h2>Final Tribal Council</h2><span>JURY VOTE</span></div>
+                        <p class="sidebar-copy">Choose the Sole Survivor. Your vote joins the jury's.</p>
+                        <div id="jury-options" class="vote-options"></div>
+                    </section>
+                    <section id="finale-panel" class="sidebar-section finale-panel" hidden>
+                        <p class="eyebrow">THE JURY HAS SPOKEN</p>
+                        <h2 id="winner-name">Sole Survivor</h2>
+                        <p id="jury-result" class="sidebar-copy"></p>
+                    </section>
+                    <section class="sidebar-section log-section">
+                        <div class="section-heading"><h2>Island log</h2><span>SEASON</span></div>
+                        <ol id="season-log" class="season-log" aria-live="polite"></ol>
+                    </section>
+                </div>
+            </section>
+            <footer class="footer-note"><span>14 CASTAWAYS · 2 TRIBES · 1 SOLE SURVIVOR</span><span>✳</span></footer>
+        </main>
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        <script src="supabase-config.js"></script>
+        <script src="script.js"></script>
+    </body>
+</html>
+
+
+
+
+
+

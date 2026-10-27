@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#f6f8ef">
+    <base href="/">
+    <title>Island Trials | Game Lobby</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Lilita+One&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <main class="game-shell survivor-shell lobby-shell">
+      <header class="topline">
+        <a class="brand" href="Lobby.html" aria-label="Island Trials home"><span class="brand-mark">✳</span> ISLAND TRIALS</a>
+        <span class="round-tag">SIGN IN TO PLAY</span>
+      </header>
+
+      <section class="season-heading">
+        <div>
+          <p class="eyebrow">THE ISLAND IS BIG ENOUGH</p>
+          <h1>Play it<br><span>together.</span></h1>
+        </div>
+        <p class="lobby-intro">Create a room, invite other players with its code, then fill any open castaway seats with bots.</p>
+      </section>
+
+      <section id="lobby-auth" class="account-strip" aria-label="Sign in to play">
+        <form id="lobby-auth-form" class="account-form">
+          <label>Email <input id="lobby-email" type="email" autocomplete="username" required></label>
+          <label>Password <input id="lobby-password" type="password" autocomplete="current-password" minlength="8" required></label>
+          <button class="quiet-button" type="submit">Sign in</button>
+          <button id="lobby-signup" class="quiet-button" type="button">Create account</button>
+        </form>
+        <p id="lobby-auth-message" class="account-message" aria-live="polite"></p>
+      </section>
+
+      <section id="lobby-account" class="settings-strip lobby-account" hidden>
+        <span>Signed in as <strong id="lobby-player-name"></strong></span>
+        <button id="lobby-signout" class="quiet-button" type="button">Sign out</button>
+      </section>
+
+      <section id="lobby-home" class="lobby-grid" hidden>
+        <div class="lobby-panel">
+          <p class="eyebrow">HOST A SEASON</p>
+          <h2>Start a new game</h2>
+          <p class="lobby-copy">Create a public game and share its number. At least two signed-in players are needed to start.</p>
+          <button id="create-room" class="reset-button" type="button">Create room</button>
+        </div>
+        <form id="join-room-form" class="lobby-panel">
+          <p class="eyebrow">JOIN YOUR CREW</p>
+          <h2>Join a game</h2>
+          <label class="room-code-label" for="guest-name">YOUR NAME</label>
+          <input id="guest-name" class="room-code-input" type="text" maxlength="16" autocomplete="nickname" placeholder="Island guest" required>
+          <label class="room-code-label" for="join-room-code">GAME NUMBER</label>
+          <input id="join-room-code" class="room-code-input" type="text" inputmode="numeric" pattern="[0-9]+" maxlength="12" autocomplete="off" required>
+          <button class="quiet-button" type="submit">Join game</button>
+        </form>
+        <div class="lobby-panel">
+          <p class="eyebrow">PLAY ON YOUR OWN</p>
+          <h2>Solo season</h2>
+          <p class="lobby-copy">Start a personal season with bots. Sign in to use your account save.</p>
+          <button id="start-solo" class="quiet-button" type="button">Start solo season</button>
+        </div>
+        <p id="lobby-home-message" class="account-message lobby-home-message" aria-live="polite"></p>
+      </section>
+
+      <section id="room-panel" class="room-panel" hidden>
+        <header class="room-heading">
+          <div>
+            <p class="eyebrow">WAITING LOBBY</p>
+            <h2>Room <strong id="room-code-display"></strong></h2>
+          </div>
+          <button id="copy-room-link" class="quiet-button" type="button">Copy invite link</button>
+        </header>
+        <div class="room-body">
+          <div>
+            <div class="section-heading"><h2>Castaways</h2><span id="room-count">0 / 14</span></div>
+            <ul id="lobby-roster" class="lobby-roster"></ul>
+          </div>
+          <div class="room-actions">
+            <p id="room-message" class="sidebar-copy" aria-live="polite">Waiting for another player to join.</p>
+            <button id="add-bot" class="quiet-button" type="button">Add bot</button>
+            <button id="start-game" class="reset-button" type="button" disabled>Start game</button>
+            <button id="leave-room" class="quiet-button" type="button">Leave room</button>
+          </div>
+        </div>
+      </section>
+
+      <footer class="footer-note"><span>ROOMS SUPPORT UP TO 14 CASTAWAYS</span><span>✳</span></footer>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="supabase-config.js"></script>
+    <script src="lobby.js"></script>
+  </body>
+</html>

@@ -10,7 +10,7 @@
 	--coral: #c45f5f;
 	font-family: "DM Sans", sans-serif;
 	color: var(--ink);
-	background: var(--paper);
+	background: #000000;
 }
 
 * { box-sizing: border-box; }
